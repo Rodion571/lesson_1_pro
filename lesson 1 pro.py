@@ -1,183 +1,151 @@
-class Product:
-    """
-    Class for product representation.
-    """
-
-    def __init__(self, name: str, price: int | float, currency='UAH'):
-        self.name = name
+class InvalidPriceError(Exception):
+    """Виключення, що виникає, коли ціна продукту недійсна."""
+    def __init__(self, price):
+        super().__init__(f"Invalid price: {price}. Price must be greater than zero.")
         self.price = price
-        self.currency = currency
+
+class InvalidQuantityError(Exception):
+    """Виключення, що виникає, коли кількість продукту недійсна."""
+    def __init__(self, quantity):
+        super().__init__(f"Invalid quantity: {quantity}. Quantity must be greater than zero.")
+        self.quantity = quantity
+
+class Product:
+    def __init__(self, name, price, description):
+        self.name = name
+        try:
+            if price > 0:
+                self.price = price
+                print('Nice. You entered the price correctly.')
+            else:
+                raise InvalidPriceError(price)
+        except InvalidPriceError as e:
+            print(e)
+            self.price = 0
+
+        self.description = description
 
     def __str__(self):
-        return f'{self.name}: {self.price:.2f} {self.currency}'
-
-
-class PaymentProcessor:
-    def pay(self, amount: float):
-        """
-        Метод для оплати. Має бути перевизначений у підкласах.
-
-        Parameters:
-        amount (float): Сума для оплати.
-
-        Returns:
-        None
-        """
-        raise NotImplementedError("Метод pay повинен бути реалізований у підкласах")
-
+        return f'{self.name} - ${self.price} UAH'
 
 class Discount:
-    def apply(self, amount: float):
-        """
-        Метод для застосування дисконту. Має бути перевизначений у підкласах.
-
-        Parameters:
-        amount (float): Початкова сума.
-
-        Returns:
-        float: Сума після застосування дисконту.
-        """
-        raise NotImplementedError("Метод apply повинен бути реалізований у підкласах")
-
+    def apply(self, price):
+        pass
 
 class PercentageDiscount(Discount):
-    def __init__(self, percentage: float):
-        self.percentage = percentage
+    def __init__(self, percentage: float | int = 0.1):
+        if 0 <= percentage <= 1:
+            self.percentage = percentage
+        else:
+            self.percentage = 0
 
-    def apply(self, amount: float):
-        """
-        Реалізація дисконту у вигляді відсотка.
-
-        Parameters:
-        amount (float): Початкова сума.
-
-        Returns:
-        float: Сума після застосування дисконту.
-        """
-        discount_amount = amount * (self.percentage / 100)
-        return amount - discount_amount
-
+    def apply(self, price: float | int):
+        return price * (1 - self.percentage)
 
 class FixedAmountDiscount(Discount):
-    def __init__(self, discount_amount: float):
-        self.discount_amount = discount_amount
+    def __init__(self, amount: float | int = 0):
+        if amount < 0:
+            amount = 0
+        self.amount = amount
 
-    def apply(self, amount: float):
-        """
-        Реалізація фіксованої знижки.
-
-        Parameters:
-        amount (float): Початкова сума.
-
-        Returns:
-        float: Сума після застосування дисконту.
-        """
-        return max(amount - self.discount_amount, 0)
-
+    def apply(self, price: float | int):
+        if price < self.amount:
+            return 0
+        return price - self.amount
 
 class DiscountMixin:
     def apply_discount(self, discount: Discount):
-        """
-        Застосовує дисконт до всіх товарів у кошику.
+        # if self.products not exists
+        if hasattr(self, 'products'):
+            for product in self.products:
+                product.price = discount.apply(product.price)
 
-        Parameters:
-        discount (Discount): Інстанс класу дисконтів.
-
-        Returns:
-        None
-        """
-        for product, quantity in self._Cart__products.items():
-            original_price = product.price
-            discounted_price = discount.apply(original_price)
-            product.price = discounted_price
-
-
-class Cart(DiscountMixin):
-    """
-    Class for cart representation.
-    """
-
-    def __init__(self):
-        self._Cart__products = {}
-
-    def add_product(self, product: Product, quantity: int | float = 1):
-        self._Cart__products[product] = self._Cart__products.get(product, 0) + quantity
-
-    def total(self):
-        return sum(product.price * quantity for product, quantity in self._Cart__products.items())
-
-    def pay(self, payment_processor: PaymentProcessor):
-        """
-        Метод для здійснення оплати за допомогою наданого процесора оплати.
-
-        Parameters:
-        payment_processor (PaymentProcessor): Інстанс процесора оплати.
-
-        Returns:
-        None
-        """
-        amount = self.total()
-        payment_processor.pay(amount)
-
-    def __str__(self):
-        return '\n'.join([f'{product} x {quantity} = {product.price * quantity:.2f} {product.currency}'
-                          for product, quantity in self._Cart__products.items()])
-
+class PaymentProcessor:
+    def pay(self, amount):
+        pass
 
 class CreditCardProcessor(PaymentProcessor):
-    def pay(self, amount: float):
-        """
-        Реалізація оплати кредитною карткою.
+    def __init__(self, card_number, card_holder, cvv, expiry_date):
+        self.card_number = card_number
+        self.card_holder = card_holder
+        self.cvv = cvv
+        self.expiry_date = expiry_date
 
-        Parameters:
-        amount (float): Сума для оплати.
-
-        Returns:
-        None
-        """
-        print(f"Оплата кредитною карткою на суму {amount:.2f} UAH")
-
+    def pay(self, amount):
+        print(f'Paying ${amount} with credit card {self.card_number}')
 
 class PayPalProcessor(PaymentProcessor):
-    def pay(self, amount: float):
-        """
-        Реалізація оплати через PayPal.
+    def __init__(self, email):
+        self.email = email
 
-        Parameters:
-        amount (float): Сума для оплати.
-
-        Returns:
-        None
-        """
-        print(f"Оплата через PayPal на суму {amount:.2f} UAH")
-
+    def pay(self, amount):
+        print(f'Paying ${amount} with PayPal account {self.email}')
 
 class BankTransferProcessor(PaymentProcessor):
-    def pay(self, amount: float):
-        """
-        Реалізація оплати банківським переказом.
+    def __init__(self, account_number, account_holder):
+        self.account_number = account_number
+        self.account_holder = account_holder
 
-        Parameters:
-        amount (float): Сума для оплати.
+    def pay(self, amount):
+        print(f'Paying ${amount} with bank transfer from account {self.account_number}')
 
-        Returns:
-        None
-        """
-        print(f"Оплата банківським переказом на суму {amount:.2f} UAH")
+class Cart(DiscountMixin):
+    def __init__(self):
+        self.products = {}
 
+    def add_product(self, product, quantity):
+        if quantity <= 0:
+            raise InvalidQuantityError(quantity)
+        self.products[product] = self.products.get(product, 0) + quantity
 
-if __name__ == '__main__':
-    cart = Cart()
-    cart.add_product(Product('Bread', 10))
-    cart.add_product(Product('Milk', 20))
-    cart.add_product(Product('Butter', 30))
+    def total_cost(self):
+        return sum(product.price * quantity for product, quantity in self.products.items())
+
+    def pay(self, payment_processor: PaymentProcessor):
+        payment_processor.pay(self.total_cost())
+
+    def __str__(self):
+        return '\n'.join(f'{product} x {quantity} = {product.price * quantity} UAH'
+                         for product, quantity in self.products.items())
+
+def main():
+    try:
+        # Creating instances of the Product class
+        product1 = Product("Laptop", -2, "A high-end gaming laptop")
+        product2 = Product("Mouse", 50.00, "A wireless mouse")
+        product3 = Product("Keyboard", 100.00, "A mechanical keyboard")
+
+        # Creating an instance of the Cart class and adding products
+        cart = Cart()
+        cart.add_product(product1, 1)
+        cart.add_product(product2, 2)
+        cart.add_product(product3, 0)  # Некоректна кількість, викликає виключення
+    except (InvalidPriceError, InvalidQuantityError) as e:
+        print(e)
+
     print(cart)
-    print(f'Total: {cart.total()} UAH')
+    print("Total cost:", cart.total_cost())
 
-    # Застосування знижки
-    discount = PercentageDiscount(10)  # 10% знижка
-    cart.apply_discount(discount)
+    # Applying different types of discounts
+    percentage_discount = PercentageDiscount(10)
+    fixed_amount_discount = FixedAmountDiscount(100)
 
-    # Використання одного з платіжних процесорів для оплати
-    payment_method = CreditCardProcessor()
-    cart.pay(payment_method)
+    cart.apply_discount(percentage_discount)
+    print(cart)
+    print("Total cost after percentage discount:", cart.total_cost())
+
+    cart.apply_discount(fixed_amount_discount)
+    print(cart)
+    print("Total cost after fixed amount discount:", cart.total_cost())
+
+    # Using different payment systems
+    credit_card_processor = CreditCardProcessor("1234-5678-9876-5432", "John Doe", "123", "12/25")
+    paypal_processor = PayPalProcessor("john.doe@example.com")
+    bank_transfer_processor = BankTransferProcessor("987654321", "John Doe")
+
+    cart.pay(credit_card_processor)
+    cart.pay(paypal_processor)
+    cart.pay(bank_transfer_processor)
+
+if __name__ == "__main__":
+    main()
