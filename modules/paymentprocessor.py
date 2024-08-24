@@ -10,6 +10,8 @@ class CreditCardProcessor(PaymentProcessor):
         self.expiry_date = expiry_date
 
     def pay(self, amount):
+        if amount <= 0:
+            raise ValueError("Amount must be greater than zero")
         print(f'Paying ${amount} with credit card {self.card_number}')
 
 
@@ -18,6 +20,8 @@ class PayPalProcessor(PaymentProcessor):
         self.email = email
 
     def pay(self, amount):
+        if amount <= 0:
+            raise ValueError("Amount must be greater than zero")
         print(f'Paying ${amount} with PayPal account {self.email}')
 
 
@@ -27,4 +31,6 @@ class BankTransferProcessor(PaymentProcessor):
         self.account_holder = account_holder
 
     def pay(self, amount):
+        if amount <= 0:
+            raise ValueError("Amount must be greater than zero")
         print(f'Paying ${amount} with bank transfer from account {self.account_number}')
