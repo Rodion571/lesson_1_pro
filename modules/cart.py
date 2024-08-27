@@ -5,7 +5,7 @@ from paymentprocessor import PaymentProcessor
 
 class DiscountMixin:
     def apply_discount(self, discount: Discount):
-        if hasattr(self, 'products') and self.products:  # Проверяем существование и наличие продуктов
+        if hasattr(self, 'products') and self.products:  # Перевіряємо наявність продуктів
             for product in self.products:
                 product.price = discount.apply(product.price)
 
@@ -37,11 +37,13 @@ class Cart(DiscountMixin, LogMixin):
         return '\n'.join(f'{product} x {quantity} = {product.price * quantity} UAH'
                          for product, quantity in self.products.items())
 
-    # Реализация протокола последовательности
+    # Реалізація ітераційного протоколу
     def __iter__(self):
+        """Повертаємо ітератор по продуктах та їх кількості."""
         return iter(self.products.items())
 
     def __getitem__(self, index):
+        """Дозволяє отримувати елемент за індексом."""
         if isinstance(index, int):
             if 0 <= index < len(self.products):
                 return list(self.products.items())[index]
@@ -51,4 +53,18 @@ class Cart(DiscountMixin, LogMixin):
             raise TypeError('Index must be an integer')
 
     def __len__(self):
+        """Повертає кількість унікальних продуктів у кошику."""
         return len(self.products)
+
+    def __next__(self):
+        """Додаємо метод __next__, щоб підтримувати ітерації."""
+        if self._current_index < len(self.products):
+            product = list(self.products.items())[self._current_index]
+            self._current_index += 1
+            return product
+        else:
+            raise StopIteration
+
+    def reset_iterator(self):
+        """Скидання ітератора для повторної ітерації."""
+        self._current_index = 0
